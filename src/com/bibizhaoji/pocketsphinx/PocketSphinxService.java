@@ -9,7 +9,6 @@ import android.util.Log;
 
 import com.bibizhaoji.bibiji.G;
 import com.bibizhaoji.bibiji.LockScreenActivity;
-import com.bibizhaoji.bibiji.MainActivity;
 import com.bibizhaoji.bibiji.utils.Pref;
 
 public class PocketSphinxService extends Service implements RecognitionListener {
@@ -33,12 +32,8 @@ public class PocketSphinxService extends Service implements RecognitionListener 
 	public void onCreate() {
 		super.onCreate();
 		Log.d(G.LOG_TAG, "*************Service onCreate");
-		G.isRecServiceRunning = true;
 		Pref.getSharePrefenrences(this);
 		initRecThread();
-		if (Pref.isMainSwitcherOn()) {
-			recTask.start();
-		}
 	}
 
 	@Override
@@ -57,6 +52,9 @@ public class PocketSphinxService extends Service implements RecognitionListener 
 		finishRecThread();
 	}
 
+	/**
+	 * 识别到词语结果
+	 */
 	@Override
 	public void onPartialResults(Bundle b) {
 		final String hyp = b.getString("hyp");
@@ -67,23 +65,31 @@ public class PocketSphinxService extends Service implements RecognitionListener 
 		}
 	}
 
+	/**
+	 * 识别线程结束
+	 */
 	@Override
 	public void onResults(Bundle b) {
 		final String hyp = b.getString("hyp");
 		Log.d(G.LOG_TAG, "|||||||||||recognizition finished:" + hyp);
 	}
 
+	/**
+	 * 识别出错
+	 */
 	@Override
 	public void onError(int err) {
 		Log.d(G.LOG_TAG, "!!!!!!!!!!!PocketSphinx got an error.");
 	}
 
+	/**
+	 * 跳转到指定activity
+	 */
 	private void jumpToActivity() {
-		if (G.isMainActivityRunning) {
+		if (inMainActivity) {
 			Log.d(G.LOG_TAG, "********主界面运行中");
-			Intent i = new Intent(this, MainActivity.class);
-			i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			this.startActivity(i);
+			Intent i = new Intent("com.bibizhaoji.GET_REC_WORD");
+			sendBroadcast(i);
 		} else {
 			Log.d(G.LOG_TAG, "********主界面未运行中");
 			Intent i = new Intent(this, LockScreenActivity.class);
@@ -92,6 +98,9 @@ public class PocketSphinxService extends Service implements RecognitionListener 
 		}
 	}
 
+	/**
+	 * 初始化语音识别线程
+	 */
 	private void initRecThread() {
 		recTask = new RecognizerTask(this);
 		recThread = new Thread(this.recTask);
@@ -99,6 +108,9 @@ public class PocketSphinxService extends Service implements RecognitionListener 
 		recThread.start();
 	}
 
+	/**
+	 * 结束语音识别线程
+	 */
 	private void finishRecThread() {
 		recTask.stop();
 		recThread.interrupt();

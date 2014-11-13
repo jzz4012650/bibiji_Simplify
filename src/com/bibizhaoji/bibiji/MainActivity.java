@@ -39,6 +39,7 @@ public class MainActivity extends Activity implements OnClickListener {
 	private int maximalVol;
 
 	private Handler handler = new Handler();
+	private ActiveReceiver mReceiver = new ActiveReceiver();
 
 	private boolean isServiceBind = false;
 
@@ -68,10 +69,6 @@ public class MainActivity extends Activity implements OnClickListener {
 		nightModeSwitcher.setOnClickListener(this);
 		stopButton.setOnClickListener(this);
 
-		// 注册广播接收器
-		IntentFilter mFilter = new IntentFilter();
-		mFilter.addAction("com.bibizhaoji.GET_REC_WORD");
-		registerReceiver(new mReceiver(), mFilter);
 	}
 
 	@Override
@@ -89,10 +86,18 @@ public class MainActivity extends Activity implements OnClickListener {
 		}
 		nightModeSwitcher.setBackgroundResource(Pref.isNightModeOn() ? R.drawable.night_mode_on : R.drawable.night_mode_off);
 
+		// 注册广播接收器
+		IntentFilter mFilter = new IntentFilter();
+		mFilter.addAction("com.bibizhaoji.GET_REC_WORD");
+		registerReceiver(mReceiver, mFilter);
+		
 		// 初始化声音播放组件
 		audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
 		originalVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
 		maximalVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+		
+		Intent i = new Intent(this, PocketSphinxService.class);
+		bindService(i, mConnection, Context.BIND_AUTO_CREATE);
 	}
 
 	@Override
@@ -102,9 +107,14 @@ public class MainActivity extends Activity implements OnClickListener {
 
 		// 停止播放声音
 		stopSound();
+		
+		// 解除广播接收器
+		unregisterReceiver(mReceiver);
 
 		// 解除与service的绑定
-		if (isServiceBind) {
+		if (mService != null) {
+			Log.d(G.LOG_TAG, "**********call unbind");
+			mService.inMainActivity = false;
 			unbindService(mConnection);
 			isServiceBind = false;
 		}
@@ -153,20 +163,20 @@ public class MainActivity extends Activity implements OnClickListener {
 			stateText.setBackgroundResource(R.drawable.bg_main_off);
 			stateGif.setBackgroundResource(R.drawable.state_off);
 			stopButton.setVisibility(View.GONE);
-			mService.stopRec();
+			if (mService != null) mService.stopRec();
 			break;
 		case STATE_LISTENING:
 			stateText.setBackgroundResource(R.drawable.bg_main_listening);
 			stateGif.setBackgroundResource(R.drawable.state_listening);
 			stopButton.setVisibility(View.GONE);
-			mService.startRec();
+			if (mService != null) mService.startRec();
 			break;
 		case STATE_ACTIVE:
 			stateText.setBackgroundResource(R.drawable.bg_main_active);
 			stateGif.setBackgroundResource(R.drawable.state_active);
 			stopButton.setVisibility(View.VISIBLE);
+			if (mService != null) mService.stopRec();
 			playSound(G.RINGTON, G.VOLUME);
-			mService.stopRec();
 			break;
 		case STATE_STOP:
 			stateText.setBackgroundResource(R.drawable.bg_main_stop);
@@ -211,6 +221,7 @@ public class MainActivity extends Activity implements OnClickListener {
 
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service) {
+			Log.d(G.LOG_TAG, "*********service bind");
 			LocalBinder binder = (LocalBinder) service;
 			mService = binder.getService();
 			mService.inMainActivity = true;
@@ -219,13 +230,13 @@ public class MainActivity extends Activity implements OnClickListener {
 
 		@Override
 		public void onServiceDisconnected(ComponentName arg0) {
-			mService.inMainActivity = false;
+			Log.d(G.LOG_TAG, "********service unbind");
 			isServiceBind = false;
 		}
 
 	};
 
-	private class mReceiver extends BroadcastReceiver {
+	private class ActiveReceiver extends BroadcastReceiver {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {

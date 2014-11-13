@@ -47,7 +47,7 @@ public class Pref {
 	}
 
 	public static final boolean isMainSwitcherOn() {
-		return getBooleanSetting(MAIN_SWITCHER, false);
+		return getBooleanSetting(MAIN_SWITCHER, true);
 	}
 
 	public static final boolean isNightModeOn() {

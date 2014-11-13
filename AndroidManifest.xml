@@ -35,7 +35,9 @@
         <activity
             android:name=".LockScreenActivity"
             android:label="@string/app_name"
-            android:theme="@style/NoActionBar" >
+            android:theme="@style/NoActionBar"
+            android:noHistory="true"
+            android:launchMode="singleTask" >
         </activity>
         <activity
             android:name=".NightModeNoticeActivity"
@@ -45,7 +47,10 @@
         </activity>
 
         <!-- === Services === -->
-        <service android:name="com.bibizhaoji.pocketsphinx.PocketSphinxService" >
+        <service
+            android:name="com.bibizhaoji.pocketsphinx.PocketSphinxService"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED"
+            android:exported="false" >
         </service>
 
         <!-- === Receivers === -->
